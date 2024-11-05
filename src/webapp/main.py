@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 import os
 from src.utils.token_manager import TokenManager
 from src.utils.image_processor import process_image_bytes
+from src.utils.telegram_sender import send_processed_image_to_telegram
 
 app = FastAPI()
 
@@ -49,14 +50,11 @@ async def upload_file(file: UploadFile, token: str):
         # Обрабатываем изображение
         processed_image = await process_image_bytes(contents)
         
-        # Возвращаем обработанное изображение
-        return Response(
-            content=processed_image,
-            media_type="image/jpeg",
-            headers={
-                "Content-Disposition": "attachment; filename=processed_image.jpg"
-            }
-        )
+        # Отправляем обработанное изображение в Telegram
+        user_id = token_data["user_id"]
+        await send_processed_image_to_telegram(user_id, processed_image)
+        
+        return {"status": "success", "message": "Изображение успешно отправлено"}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
