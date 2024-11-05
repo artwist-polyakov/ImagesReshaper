@@ -3,7 +3,7 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from image_processor import process_image
+from image_processor import process_image, process_image_from_link
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -23,8 +23,44 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     await update.message.reply_text(
-        "Привет! Отправь мне изображение, и я конвертирую его в прогрессивный JPEG размером менее 400KB."
+        "Привет! Я могу помочь вам:\n"
+        "1. Отправьте изображение напрямую\n"
+        "2. Используйте команду /link <url> для обработки изображения по ссылке"
     )
+
+async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ALLOWED_USERS:
+        await update.message.reply_text("У вас нет доступа к этому боту.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("Пожалуйста, укажите ссылку после команды /link")
+        return
+
+    url = context.args[0]
+    try:
+        # Отправляем сообщение о начале обработки
+        status_message = await update.message.reply_text("Обрабатываю изображение...")
+        
+        processed_image_path = await process_image_from_link(url)
+        
+        # Если вернулась строка с ошибкой
+        if isinstance(processed_image_path, str) and not os.path.exists(processed_image_path):
+            await status_message.edit_text(processed_image_path)
+            return
+
+        # Отправка обработанного изображения
+        with open(processed_image_path, 'rb') as img:
+            await update.message.reply_document(img)
+        
+        await status_message.delete()
+        
+        # Удаление временного файла
+        os.remove(processed_image_path)
+        
+    except Exception as e:
+        logging.error(f"Ошибка при обработке изображения по ссылке: {e}")
+        await status_message.edit_text("Произошла ошибка при обработке изображения.")
 
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ALLOWED_USERS:
@@ -37,7 +73,17 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Пожалуйста, отправьте изображение.")
         return
 
+    # Проверка размера файла (20 МБ = 20 * 1024 * 1024 байт)
+    if photo.file_size > 20 * 1024 * 1024:
+        await update.message.reply_text(
+            "Файл слишком большой! Для больших изображений используйте команду /link с прямой ссылкой на изображение."
+        )
+        return
+
     try:
+        # Отправляем сообщение о начале обработки
+        status_message = await update.message.reply_text("Обрабатываю изображение...")
+        
         # Загрузка файла
         file = await context.bot.get_file(photo.file_id)
         
@@ -48,12 +94,14 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(processed_image_path, 'rb') as img:
             await update.message.reply_document(img)
         
+        await status_message.delete()
+        
         # Удаление временного файла
         os.remove(processed_image_path)
         
     except Exception as e:
         logging.error(f"Ошибка при обработке изображения: {e}")
-        await update.message.reply_text("Произошла ошибка при обработке изображения.")
+        await status_message.edit_text("Произошла ошибка при обработке изображения.")
 
 def main():
     # Инициализация бота
@@ -61,6 +109,7 @@ def main():
 
     # Добавление обработчиков
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("link", handle_link))
     application.add_handler(MessageHandler(
         filters.PHOTO | filters.Document.IMAGE,
         handle_image
