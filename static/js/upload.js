@@ -66,19 +66,28 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             if (!response.ok) {
-                throw new Error('Ошибка загрузки');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Ошибка загрузки');
             }
             
-            const result = await response.json();
-            if (result.status === 'success') {
-                alert('Файл успешно загружен! Проверьте сообщения в боте.');
-            } else {
-                alert('Произошла ошибка при загрузке файла');
-            }
+            // Получаем blob из ответа
+            const blob = await response.blob();
+            
+            // Создаем ссылку для скачивания
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'processed_image.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            alert('Файл успешно обработан!');
             
         } catch (error) {
             console.error('Ошибка:', error);
-            alert('Произошла ошибка при загрузке файла');
+            alert(error.message || 'Произошла ошибка при загрузке файла');
         }
     }
 }); 

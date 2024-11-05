@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка изображения</title>
+    <style>
+        #dropZone {
+            width: 300px;
+            height: 200px;
+            border: 2px dashed #ccc;
+            text-align: center;
+            padding: 20px;
+            margin: 20px auto;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="dropZone">
+        Перетащите файл сюда или кликните для выбора
+        <input type="file" id="fileInput" style="display: none" accept="image/*">
+    </div>
+    <script src="/static/js/upload.js"></script>
+</body>
+</html> 
