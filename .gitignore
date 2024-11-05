@@ -13,7 +13,10 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.jpg
+*.jpeg
+*.png
+*.gif
 *.so
 .Python
 build/
