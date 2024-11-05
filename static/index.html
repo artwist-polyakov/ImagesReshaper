@@ -48,6 +48,37 @@
         button.upload {
             background-color: #2196F3;
         }
+
+        .crop-container {
+            position: relative;
+            max-width: 100%;
+            margin: 0 auto;
+            display: inline-block;
+        }
+
+        .crop-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
+        }
+
+        .crop-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border: 1px solid #333;
+        }
+
+        .crop-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .crop-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .crop-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .crop-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
     </style>
 </head>
 <body>
@@ -56,7 +87,15 @@
         <input type="file" id="fileInput" style="display: none" accept="image/*">
     </div>
     <div id="imagePreview">
-        <img id="previewImage" src="" alt="Предпросмотр">
+        <div class="crop-container">
+            <img id="previewImage" src="" alt="Предпросмотр">
+            <div class="crop-area">
+                <div class="crop-handle nw" data-handle="nw"></div>
+                <div class="crop-handle ne" data-handle="ne"></div>
+                <div class="crop-handle sw" data-handle="sw"></div>
+                <div class="crop-handle se" data-handle="se"></div>
+            </div>
+        </div>
         <div class="button-group">
             <button id="processButton">Обработать</button>
             <button id="deleteButton" class="delete">Удалить</button>

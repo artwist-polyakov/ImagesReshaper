@@ -38,6 +38,10 @@ async def process_image_file(input_file_path: str) -> str:
 
 async def process_image_bytes(image_bytes: bytes) -> bytes:
     """Обрабатывает изображение из байтов"""
+    # Если размер уже меньше 400KB, возвращаем как есть
+    if len(image_bytes) <= 400 * 1024:
+        return image_bytes
+
     temp_input = None
     temp_output = None
     try:
@@ -50,13 +54,31 @@ async def process_image_bytes(image_bytes: bytes) -> bytes:
         temp_input.close()
         temp_output.close()
         
-        # Обрабатываем изображение
-        processed_path = await process_image_file(temp_input.name)
-        
-        # Читаем обработанное изображение в байты
-        with open(processed_path, 'rb') as f:
-            return f.read()
+        # Открываем изображение
+        with Image.open(temp_input.name) as img:
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
             
+            # Сохраняем с оптимизацией
+            quality = 95
+            while True:
+                img.save(
+                    temp_output.name,
+                    'JPEG',
+                    quality=quality,
+                    optimize=True,
+                    progressive=True
+                )
+                
+                file_size = os.path.getsize(temp_output.name)
+                if file_size <= 400 * 1024 or quality <= 30:  # Увеличил минимальное качество до 30
+                    break
+                quality -= 5
+            
+            # Читаем обработанное изображение в байты
+            with open(temp_output.name, 'rb') as f:
+                return f.read()
+                
     finally:
         # Очищаем временные файлы
         if temp_input and os.path.exists(temp_input.name):

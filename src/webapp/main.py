@@ -6,6 +6,7 @@ import os
 from src.utils.token_manager import TokenManager
 from src.utils.image_processor import process_image_bytes
 from src.utils.telegram_sender import send_processed_image_to_telegram
+import json
 
 app = FastAPI()
 
@@ -32,7 +33,10 @@ async def root():
     return HTMLResponse(content=html_content)
 
 @app.post("/upload")
-async def upload_file(file: UploadFile, token: str):
+async def upload_file(
+    file: UploadFile,
+    token: str
+):
     try:
         # Проверяем токен
         token_data = token_manager.validate_token(token)
@@ -40,10 +44,8 @@ async def upload_file(file: UploadFile, token: str):
             raise HTTPException(status_code=401, detail="Недействительный или просроченный токен")
         
         # Проверяем размер файла
-        max_size = int(os.getenv("MAX_UPLOAD_SIZE", 52428800))  # 50MB по умолчанию
-        
-        # Читаем файл
         contents = await file.read()
+        max_size = int(os.getenv("MAX_UPLOAD_SIZE", 52428800))
         if len(contents) > max_size:
             raise HTTPException(status_code=400, detail="Файл слишком большой")
         
@@ -57,4 +59,5 @@ async def upload_file(file: UploadFile, token: str):
         return {"status": "success", "message": "Изображение успешно отправлено"}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        print(f"Ошибка при обработке загрузки: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
