@@ -1,10 +1,11 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from image_processor import process_image, process_image_from_link
 from utils.token_manager import TokenManager
+import html  # Добавьте этот импорт в начало файла
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -120,10 +121,14 @@ async def handle_load(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Формируем URL с токеном
         url = f"{webapp_url}?token={token}"
         
+        # Создаем клавиатуру с кнопкой-ссылкой
+        keyboard = [[InlineKeyboardButton("Загрузить изображение", url=url)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         await update.message.reply_text(
-            "Перейдите по ссылке для загрузки изображения:\n"
-            f"{url}\n\n"
-            "Ссылка действительна в течение 1 часа."
+            "Нажмите на кнопку ниже для загрузки изображения.\n\n"
+            "Ссылка действительна в течение 1 часа.",
+            reply_markup=reply_markup
         )
     except Exception as e:
         logging.error(f"Ошибка при создании ссылки: {e}")
