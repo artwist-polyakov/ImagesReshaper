@@ -26,7 +26,7 @@
 
 4. Запустите бота с помощью Docker Compose:
     ```bash
-    docker compose up -d
+    docker compose up -d --build
     ```
 
 ## Использование
