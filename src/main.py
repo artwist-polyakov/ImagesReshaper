@@ -23,11 +23,17 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# Получение списка разрешенных пользователей из переменных окружения
-ALLOWED_USERS = list(map(int, os.getenv('ALLOWED_USERS').split(',')))
+# Изменяем получение списка разрешенных пользователей
+ALLOWED_USERS_STR = os.getenv('ALLOWED_USERS', '*')
+ALLOWED_USERS = None if ALLOWED_USERS_STR == '*' else list(map(int, ALLOWED_USERS_STR.split(',')))
+
+# Изменяем функцию проверки доступа (добавим новую)
+def has_access(user_id: int) -> bool:
+    """Проверяет, имеет ли пользователь доступ к боту"""
+    return ALLOWED_USERS is None or user_id in ALLOWED_USERS
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ALLOWED_USERS:
+    if not has_access(update.effective_user.id):
         await update.message.reply_text("У вас нет доступа к этому боту.")
         return
     
@@ -39,7 +45,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ALLOWED_USERS:
+    if not has_access(update.effective_user.id):
         await update.message.reply_text("У вас нет доступа к этому боту.")
         return
 
@@ -73,7 +79,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_message.edit_text("Произошла ошибка при обработке изображения.")
 
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ALLOWED_USERS:
+    if not has_access(update.effective_user.id):
         await update.message.reply_text("У вас нет доступа к этому боту.")
         return
 
@@ -192,7 +198,7 @@ async def handle_resize_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("Произошла ошибка при обработке изображния.")
 
 async def handle_load(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ALLOWED_USERS:
+    if not has_access(update.effective_user.id):
         await update.message.reply_text("У вас нет доступа к этому боту.")
         return
     
