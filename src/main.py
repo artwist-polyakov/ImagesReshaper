@@ -1,12 +1,17 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from image_processor import process_image, process_image_from_link
+from utils.token_manager import TokenManager
+import html  # Добавьте этот импорт в начало файла
 
 # Загрузка переменных окружения
 load_dotenv()
+
+# Создаем экземпляр TokenManager
+token_manager = TokenManager()
 
 # Настройка логирования
 logging.basicConfig(
@@ -103,18 +108,45 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Ошибка при обработке изображения: {e}")
         await status_message.edit_text("Произошла ошибка при обработке изображения.")
 
-def main():
-    # Инициализация бота
-    application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
+async def handle_load(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ALLOWED_USERS:
+        await update.message.reply_text("У вас нет доступа к этому боту.")
+        return
+    
+    try:
+        # Создаем токен для пользователя
+        token = token_manager.create_token(update.effective_user.id)
+        webapp_url = os.getenv('WEBAPP_URL', 'http://localhost:8000')
+        
+        # Формируем URL с токеном
+        url = f"{webapp_url}?token={token}"
+        
+        # Создаем клавиатуру с кнопкой-ссылкой
+        keyboard = [[InlineKeyboardButton("Загрузить изображение", url=url)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            "Нажмите на кнопку ниже для загрузки изображения.\n\n"
+            "Ссылка действительна в течение 1 часа.",
+            reply_markup=reply_markup
+        )
+    except Exception as e:
+        logging.error(f"Ошибка при создании ссылки: {e}")
+        await update.message.reply_text("Произошла ошибка при создании ссылки.")
 
+def main():
+    # Инициализация бота и token manager
+    application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
+    
     # Добавление обработчиков
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("link", handle_link))
+    application.add_handler(CommandHandler("load", handle_load))  # Новый обработчик
     application.add_handler(MessageHandler(
         filters.PHOTO | filters.Document.IMAGE,
         handle_image
     ))
-
+    
     # Запуск бота
     application.run_polling()
 

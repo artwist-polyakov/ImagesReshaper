@@ -1,5 +1,5 @@
 services:
-  images_bot:
+  bot:
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,4 +9,30 @@ services:
       - ./data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
-    restart: always 
+    env_file:
+      - .env
+    restart: always
+    networks:
+      - app_network
+
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.webapp
+    container_name: images_reshaper_webapp
+    volumes:
+      - ./src:/app/src
+      - ./static:/app/static
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    restart: always
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
