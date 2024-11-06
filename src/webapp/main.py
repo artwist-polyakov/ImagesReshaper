@@ -50,11 +50,11 @@ async def upload_file(
             raise HTTPException(status_code=400, detail="Файл слишком большой")
         
         # Обрабатываем изображение
-        processed_image = await process_image_bytes(contents)
+        result = await process_image_bytes(contents)
         
         # Отправляем обработанное изображение в Telegram
         user_id = token_data["user_id"]
-        await send_processed_image_to_telegram(user_id, processed_image)
+        await send_processed_image_to_telegram(user_id, result.bytes)
         
         return {"status": "success", "message": "Изображение успешно отправлено"}
         

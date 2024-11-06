@@ -30,7 +30,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет! Я могу помочь вам:\n"
         "1. Отправьте изображение напрямую\n"
-        "2. Используйте команду /link <url> для обработки изображения по ссылке"
+        "2. Используйте команду /link <url> для обработки изображения по ссылке\n"
+        "3. Используйте команду /load для загрузки через веб-интерфейс"
     )
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,7 +82,9 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Проверка размера файла (20 МБ = 20 * 1024 * 1024 байт)
     if photo.file_size > 20 * 1024 * 1024:
         await update.message.reply_text(
-            "Файл слишком большой! Для больших изображений используйте команду /link с прямой ссылкой на изображение."
+            "Файл слишком большой! Вы можете:\n"
+            "1. Использовать команду /link с прямой ссылкой на изображение\n"
+            "2. Использовать команду /load для загрузки через веб-интерфейс"
         )
         return
 
@@ -93,11 +96,20 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = await context.bot.get_file(photo.file_id)
         
         # Обработка изображения
-        processed_image_path = await process_image(file)
+        processed_image_path, result = await process_image(file)
+        
+        # Формируем сообщение с информацией о сжатии
+        info_message = (
+            f"📊 Информация о сжатии:\n"
+            f"• Исходный размер: {result.original_size / 1024:.1f}KB\n"
+            f"• Конечный размер: {result.final_size / 1024:.1f}KB\n"
+            f"• Качество: {result.quality}%"
+        )
         
         # Отправка обработанного изображения
         with open(processed_image_path, 'rb') as img:
             await update.message.reply_document(img)
+            await update.message.reply_text(info_message)
         
         await status_message.delete()
         
