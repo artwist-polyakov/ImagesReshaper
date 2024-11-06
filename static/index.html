@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка изображения</title>
+    <style>
+        #dropZone {
+            width: 300px;
+            height: 200px;
+            border: 2px dashed #ccc;
+            text-align: center;
+            padding: 20px;
+            margin: 20px auto;
+            cursor: pointer;
+        }
+
+        #imagePreview {
+            max-width: 500px;
+            margin: 20px auto;
+            text-align: center;
+            display: none;
+        }
+
+        #previewImage {
+            max-width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .button-group {
+            margin: 15px 0;
+        }
+
+        button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        button.delete {
+            background-color: #f44336;
+        }
+
+        button.upload {
+            background-color: #2196F3;
+        }
+
+        .crop-container {
+            position: relative;
+            max-width: 100%;
+            margin: 0 auto;
+            display: inline-block;
+        }
+
+        .crop-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
+        }
+
+        .crop-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border: 1px solid #333;
+        }
+
+        .crop-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .crop-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .crop-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .crop-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+    </style>
+</head>
+<body>
+    <div id="dropZone">
+        Перетащите файл сюда или кликните для выбора
+        <input type="file" id="fileInput" style="display: none" accept="image/*">
+    </div>
+    <div id="imagePreview">
+        <div class="crop-container">
+            <img id="previewImage" src="" alt="Предпросмотр">
+            <div class="crop-area">
+                <div class="crop-handle nw" data-handle="nw"></div>
+                <div class="crop-handle ne" data-handle="ne"></div>
+                <div class="crop-handle sw" data-handle="sw"></div>
+                <div class="crop-handle se" data-handle="se"></div>
+            </div>
+        </div>
+        <div class="button-group">
+            <button id="processButton">Обработать</button>
+            <button id="deleteButton" class="delete">Удалить</button>
+            <button id="uploadNewButton" class="upload">Загрузить другое изображение</button>
+        </div>
+    </div>
+    <script src="/static/js/upload.js"></script>
+</body>
+</html> 
