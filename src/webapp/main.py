@@ -4,9 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import os
 from src.utils.token_manager import TokenManager
-from src.utils.image_processor import process_image_bytes
-from src.utils.telegram_sender import send_processed_image_to_telegram
+from src.utils.image_processor import process_image_bytes, get_image_dimensions, calculate_resize_options
+from src.utils.telegram_sender import send_resize_options_to_telegram
 import json
+from src.utils.storage import storage
 
 app = FastAPI()
 
@@ -45,18 +46,26 @@ async def upload_file(
         
         # Проверяем размер файла
         contents = await file.read()
-        max_size = int(os.getenv("MAX_UPLOAD_SIZE", 52428800))
+        max_size = int(os.getenv("MAX_UPLOAD_SIZE", 52428800))  # 50MB по умолчанию
         if len(contents) > max_size:
             raise HTTPException(status_code=400, detail="Файл слишком большой")
         
-        # Обрабатываем изображение
-        processed_image = await process_image_bytes(contents)
+        # Получаем размеры изображения и варианты изменения размера
+        width, height = get_image_dimensions(contents)
+        resize_options = calculate_resize_options(width, height)
         
-        # Отправляем обработанное изображение в Telegram
+        # Отправляем сообщение с вариантами в Telegram
         user_id = token_data["user_id"]
-        await send_processed_image_to_telegram(user_id, processed_image)
         
-        return {"status": "success", "message": "Изображение успешно отправлено"}
+        # Сохраняем изображение в общее хранилище
+        storage.save_image(user_id, {
+            'bytes': contents,
+            'original_size': (width, height)
+        })
+        
+        await send_resize_options_to_telegram(user_id, contents, width, height, resize_options)
+        
+        return {"status": "success", "message": "Изображение получено, проверьте Telegram для выбора размера"}
         
     except Exception as e:
         print(f"Ошибка при обработке загрузки: {str(e)}")
