@@ -22,11 +22,16 @@ async def check_quality(img: Image.Image, quality: int) -> Tuple[int, int, bytes
     size = output.tell()
     return quality, size, output.getvalue()
 
-async def process_image_bytes(image_bytes: bytes) -> ProcessingResult:
+async def process_image_bytes(
+    image_bytes: bytes,
+    target_width: int = None,
+    target_height: int = None
+) -> ProcessingResult:
     """Обрабатывает изображение, оптимизируя размер файла"""
     max_file_size = int(os.getenv('MAX_PROCESSED_FILE_SIZE', 400 * 1024))
     original_size = len(image_bytes)
     
+    # Если исходный размер уже подходящий, возвращаем как есть
     if original_size <= max_file_size:
         return ProcessingResult(
             bytes=image_bytes,
@@ -39,7 +44,25 @@ async def process_image_bytes(image_bytes: bytes) -> ProcessingResult:
         if img.mode in ('RGBA', 'P'):
             img = img.convert('RGB')
         
-        # Асинхронно проверяем все контрольные точки качества
+        # Изменяем размер, если указаны целевые размеры
+        if target_width and target_height:
+            img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+            
+            # После изменения размера пробуем сохранить с максимальным качеством
+            output = io.BytesIO()
+            img.save(output, format='JPEG', quality=100, optimize=True)
+            size = output.tell()
+            
+            # Если после изменения размера файл уже подходящий, возвращаем его
+            if size <= max_file_size:
+                return ProcessingResult(
+                    bytes=output.getvalue(),
+                    original_size=original_size,
+                    final_size=size,
+                    quality=100
+                )
+        
+        # Если нужно уменьшить размер, проверяем разные уровни качества
         control_points = [95, 80, 60, 40, 20, 5]
         tasks = [check_quality(img, q) for q in control_points]
         quality_sizes = await asyncio.gather(*tasks)
@@ -107,3 +130,42 @@ async def process_image_from_url(url: str) -> Tuple[str, ProcessingResult]:
         return output_path, result
     except Exception as e:
         raise Exception(f"Ошибка при обработке изображения: {str(e)}")
+
+def get_image_dimensions(image_bytes: bytes) -> Tuple[int, int]:
+    """Получает размеры изображения из байтов"""
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        return img.size
+
+def calculate_resize_options(width: int, height: int) -> list:
+    """Рассчитывает возможные варианты изменения размера"""
+    options = []
+    
+    # Добавляем оригинальный размер
+    options.append({
+        'emoji': '😴',
+        'width': width,
+        'height': height,
+        'description': f'Оригинальный размер {width}x{height}'
+    })
+    
+    # Проверяем возможность уменьшения до 640px
+    if width > 640:
+        new_height = int(height * (640 / width))
+        options.append({
+            'emoji': '🥑',
+            'width': 640,
+            'height': new_height,
+            'description': f'Для размещения на часть экрана 640x{new_height}'
+        })
+    
+    # Проверяем возможность уменьшения до 1280px
+    if width > 1280:
+        new_height = int(height * (1280 / width))
+        options.append({
+            'emoji': '🍑',
+            'width': 1280,
+            'height': new_height,
+            'description': f'Для размещения на всю ширину 1280x{new_height}'
+        })
+    
+    return options
