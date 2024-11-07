@@ -157,6 +157,16 @@ def calculate_resize_options(width: int, height: int) -> list:
             'height': new_height,
             'description': f'Для размещения на часть экрана 640x{new_height}'
         })
+        
+        # Добавляем ретина-версию для 640px
+        if width > 1280:
+            new_height = int(height * (1280 / width))
+            options.append({
+                'emoji': '2️⃣🥑',
+                'width': 1280,
+                'height': new_height,
+                'description': f'На часть экрана высокого разрешения 1280x{new_height}'
+            })
     
     # Проверяем возможность уменьшения до 1280px
     if width > 1280:
@@ -167,5 +177,15 @@ def calculate_resize_options(width: int, height: int) -> list:
             'height': new_height,
             'description': f'Для размещения на всю ширину 1280x{new_height}'
         })
+        
+        # Добавляем ретина-версию для 1280px
+        if width > 2560:
+            new_height = int(height * (2560 / width))
+            options.append({
+                'emoji': '2️⃣🍑',
+                'width': 2560,
+                'height': new_height,
+                'description': f'На всю ширину высокого разрешения 2560x{new_height}'
+            })
     
     return options
