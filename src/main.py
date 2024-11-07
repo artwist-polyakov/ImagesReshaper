@@ -10,6 +10,7 @@ from src.utils.storage import storage  # Добавляем импорт
 import html
 import json
 import io
+import aiohttp
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -56,23 +57,49 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     try:
         # Отправляем сообщение о начале обработки
-        status_message = await update.message.reply_text("Обрабатываю изображение...")
+        status_message = await update.message.reply_text("Загружаю изображение...")
         
-        processed_image_path = await process_image_from_link(url)
+        # Скачиваем изображение по ссылке
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    await status_message.edit_text("Не удалось загрузить изображение")
+                    return
+                image_bytes = await response.read()
         
-        # Если вернулась строка с ошибкой
-        if isinstance(processed_image_path, str) and not os.path.exists(processed_image_path):
-            await status_message.edit_text(processed_image_path)
-            return
-
-        # Отправка обработанного изображения
-        with open(processed_image_path, 'rb') as img:
-            await update.message.reply_document(img)
+        # Получаем размеры изображения
+        width, height = get_image_dimensions(image_bytes)
         
-        await status_message.delete()
+        # Сохраняем байты изображения в контексте для последующей обработки
+        context.user_data['pending_image'] = {
+            'bytes': image_bytes,
+            'original_size': (width, height)
+        }
         
-        # Удаление временного файла
-        os.remove(processed_image_path)
+        # Получаем варианты изменения размера
+        resize_options = calculate_resize_options(width, height)
+        
+        # Создаем клавиатуру с вариантами
+        keyboard = []
+        for option in resize_options:
+            callback_data = json.dumps({
+                'action': 'resize',
+                'width': option['width'],
+                'height': option['height']
+            })
+            keyboard.append([InlineKeyboardButton(
+                f"{option['emoji']} {option['description']}", 
+                callback_data=callback_data
+            )])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Обновляем статусное сообщение с вариантами
+        await status_message.edit_text(
+            f"Изображение получено, его размеры: {width}x{height}.\n"
+            "Как вы хотите преобразовать его под свой веб-сайт?",
+            reply_markup=reply_markup
+        )
         
     except Exception as e:
         logging.error(f"Ошибка при обработке изображения по ссылке: {e}")
