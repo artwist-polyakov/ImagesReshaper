@@ -2,11 +2,11 @@ services:
   bot:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: telegram_bot/Dockerfile
     container_name: images_reshaper_bot
     volumes:
-      - ./src:/app/src
-      - ./data:/app/data
+      - ./telegram_bot/src:/app/src
+      - ./shared:/app/shared
       - ./temp:/app/temp
     environment:
       - PYTHONUNBUFFERED=1
@@ -19,11 +19,12 @@ services:
   webapp:
     build:
       context: .
-      dockerfile: Dockerfile.webapp
+      dockerfile: webapp/Dockerfile
     container_name: images_reshaper_webapp
     volumes:
-      - ./src:/app/src
-      - ./static:/app/static
+      - ./webapp/src:/app/src
+      - ./webapp/static:/app/static
+      - ./shared:/app/shared
       - ./temp:/app/temp
     environment:
       - PYTHONUNBUFFERED=1

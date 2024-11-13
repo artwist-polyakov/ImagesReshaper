@@ -1,22 +1,6 @@
-# PyCharm
-.idea/
-*.iml
-*.iws
-*.ipr
-.idea_modules/
-
-# VSCode
-.vscode/
-*.code-workspace
-.history/
-
 # Python
 __pycache__/
 *.py[cod]
-*.jpg
-*.jpeg
-*.png
-*.gif
 *.so
 .Python
 build/
@@ -47,22 +31,26 @@ venv.bak/
 # Файлы логов
 *.log
 
-# Локальные файлы конфигурации
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
 # Временные файлы
+temp/
+*.tmp
+*.temp
 *.swp
 *.swo
 *~
 
-# Файлы операционной системы
+# Файлы изображений
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+.history/
+
+# OS
 .DS_Store
 Thumbs.db
-
-# Временные файлы изображений
-*.tmp
-*.temp
-temp/
