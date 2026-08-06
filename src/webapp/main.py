@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import os
-from telegram.error import NetworkError, TimedOut
+from telegram.error import BadRequest, NetworkError
 from src.utils.token_manager import TokenManager
 from src.utils.image_processor import process_image_bytes, get_image_dimensions, calculate_resize_options
 from src.utils.telegram_sender import send_resize_options_to_telegram
@@ -68,8 +68,10 @@ async def upload_file(
             await send_resize_options_to_telegram(
                 user_id, contents, width, height, resize_options
             )
-        except (TimedOut, NetworkError) as e:
-            # Файл уже сохранён; только транзиентные сетевые сбои Telegram
+        except NetworkError as e:
+            # В PTB 20.7 BadRequest ошибочно наследует NetworkError — не считаем его транзиентным.
+            if isinstance(e, BadRequest):
+                raise
             raise HTTPException(
                 status_code=502,
                 detail=f"telegram_notify_failed: {e}",

@@ -96,16 +96,16 @@ def test_upload_returns_502_when_telegram_times_out(client):
     assert webapp_main.storage.get_image(8) is not None
 
 
-def test_upload_returns_500_on_permanent_telegram_error(client):
-    from telegram.error import InvalidToken
+def test_upload_returns_500_on_bad_request_even_if_networkerror_subclass(client):
+    from telegram.error import BadRequest
 
     test_client, webapp_main = client
-    token = webapp_main.token_manager.create_token(user_id=9)
+    token = webapp_main.token_manager.create_token(user_id=10)
 
     with patch(
         "src.webapp.main.send_resize_options_to_telegram",
         new_callable=AsyncMock,
-        side_effect=InvalidToken("Invalid token"),
+        side_effect=BadRequest("chat not found"),
     ):
         response = test_client.post(
             "/upload",
