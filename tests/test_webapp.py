@@ -72,3 +72,46 @@ def test_upload_success_stores_image_and_notifies(client):
     stored = webapp_main.storage.get_image(7)
     assert stored is not None
     assert stored["original_size"] == (800, 600)
+
+
+def test_upload_returns_502_when_telegram_times_out(client):
+    from telegram.error import TimedOut
+
+    test_client, webapp_main = client
+    token = webapp_main.token_manager.create_token(user_id=8)
+
+    with patch(
+        "src.webapp.main.send_resize_options_to_telegram",
+        new_callable=AsyncMock,
+        side_effect=TimedOut("Timed out"),
+    ):
+        response = test_client.post(
+            "/upload",
+            params={"token": token},
+            files={"file": ("img.jpg", _jpeg_bytes(100, 80), "image/jpeg")},
+        )
+
+    assert response.status_code == 502
+    assert response.json()["detail"].startswith("telegram_notify_failed:")
+    assert webapp_main.storage.get_image(8) is not None
+
+
+def test_upload_returns_500_on_bad_request_even_if_networkerror_subclass(client):
+    from telegram.error import BadRequest
+
+    test_client, webapp_main = client
+    token = webapp_main.token_manager.create_token(user_id=10)
+
+    with patch(
+        "src.webapp.main.send_resize_options_to_telegram",
+        new_callable=AsyncMock,
+        side_effect=BadRequest("chat not found"),
+    ):
+        response = test_client.post(
+            "/upload",
+            params={"token": token},
+            files={"file": ("img.jpg", _jpeg_bytes(100, 80), "image/jpeg")},
+        )
+
+    assert response.status_code == 500
+    assert "telegram_notify_failed" not in response.json()["detail"]
