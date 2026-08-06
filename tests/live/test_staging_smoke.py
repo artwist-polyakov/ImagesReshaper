@@ -84,19 +84,7 @@ def test_live_upload_with_valid_token_if_provided(live_client: httpx.Client):
         assert body.get("status") == "success"
         return
 
-    # Допускаем только известный сбой уведомления в Telegram (сеть/API),
-    # а не произвольные 500 от декодирования/storage.
-    assert response.status_code == 500, response.text
-    detail = str(response.json().get("detail", "")).lower()
-    telegram_markers = (
-        "telegram",
-        "timed out",
-        "timeout",
-        "connect",
-        "network",
-        "httpx",
-        "bot",
-    )
-    assert any(marker in detail for marker in telegram_markers), (
-        f"Неожиданный 500 на upload: {detail!r}"
-    )
+    # Изображение могло сохраниться, а нотификация в Telegram — нет (сеть/API).
+    assert response.status_code == 502, response.text
+    detail = str(response.json().get("detail", ""))
+    assert detail.startswith("telegram_notify_failed:"), detail

@@ -72,3 +72,26 @@ def test_upload_success_stores_image_and_notifies(client):
     stored = webapp_main.storage.get_image(7)
     assert stored is not None
     assert stored["original_size"] == (800, 600)
+
+
+def test_upload_returns_502_when_telegram_fails(client):
+    from telegram.error import TimedOut
+
+    test_client, webapp_main = client
+    token = webapp_main.token_manager.create_token(user_id=8)
+
+    with patch(
+        "src.webapp.main.send_resize_options_to_telegram",
+        new_callable=AsyncMock,
+        side_effect=TimedOut("Timed out"),
+    ):
+        response = test_client.post(
+            "/upload",
+            params={"token": token},
+            files={"file": ("img.jpg", _jpeg_bytes(100, 80), "image/jpeg")},
+        )
+
+    assert response.status_code == 502
+    assert response.json()["detail"].startswith("telegram_notify_failed:")
+    # Картинка уже должна быть сохранена до нотификации
+    assert webapp_main.storage.get_image(8) is not None
