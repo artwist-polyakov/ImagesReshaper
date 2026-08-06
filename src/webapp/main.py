@@ -67,6 +67,8 @@ async def upload_file(
         
         return {"status": "success", "message": "Изображение получено, проверьте Telegram для выбора размера"}
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Ошибка при обработке загрузки: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
