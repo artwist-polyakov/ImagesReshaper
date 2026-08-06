@@ -1,6 +1,6 @@
 import aiohttp
 import pytest
-from PIL import Image
+from PIL import Image, __version__ as pillow_version
 import io
 
 from src.utils.image_processor import (
@@ -15,6 +15,12 @@ def test_aiohttp_patched_version():
     """CVE-2026-69244 исправлен в aiohttp >= 3.14.3."""
     parts = tuple(int(p) for p in aiohttp.__version__.split(".")[:3])
     assert parts >= (3, 14, 3)
+
+
+def test_pillow_patched_version():
+    """Pillow CVE bundle (JPEG2000/PDF/TGA/CMS/…) исправлен в >= 12.3.0."""
+    parts = tuple(int(p) for p in pillow_version.split(".")[:3])
+    assert parts >= (12, 3, 0)
 
 
 def test_get_image_dimensions(make_jpeg_bytes):
