@@ -1,4 +1,12 @@
+import cryptography
+
 from src.utils.token_manager import TokenManager
+
+
+def test_cryptography_patched_version():
+    """CVE-2026-69248 / CVE-2026-69249 исправлены в cryptography >= 49.0.0."""
+    parts = tuple(int(p) for p in cryptography.__version__.split(".")[:3])
+    assert parts >= (49, 0, 0)
 
 
 def test_create_and_validate_token():
