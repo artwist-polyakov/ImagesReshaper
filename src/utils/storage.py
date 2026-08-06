@@ -4,7 +4,7 @@ from pathlib import Path
 
 class ImageStorage:
     def __init__(self):
-        self.temp_dir = Path("/app/temp")
+        self.temp_dir = Path(os.getenv("TEMP_DIR", "/app/temp"))
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_user_dir(self, user_id: int) -> Path:
