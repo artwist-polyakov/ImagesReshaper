@@ -67,3 +67,6 @@ Thumbs.db
 *.temp
 temp/
 tests/_tmp_storage/
+
+# Cursor local skills (SSH configs with secrets)
+.cursor/
