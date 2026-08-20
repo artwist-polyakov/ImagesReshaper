@@ -2,9 +2,16 @@ import io
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import python_multipart
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from PIL import Image
+
+
+def test_python_multipart_patched_version():
+    """CVE-2024-53981 … CVE-2026-53540 исправлены в python-multipart >= 0.0.31."""
+    parts = tuple(int(p) for p in python_multipart.__version__.split(".")[:3])
+    assert parts >= (0, 0, 31)
 
 
 @pytest.fixture
