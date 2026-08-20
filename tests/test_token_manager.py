@@ -1,12 +1,20 @@
+from importlib.metadata import version as package_version
+
 import cryptography
 
 from src.utils.token_manager import TokenManager
 
 
 def test_cryptography_patched_version():
-    """CVE-2026-69248 / CVE-2026-69249 исправлены в cryptography >= 49.0.0."""
+    """CVE-2026-69247 исправлен в cryptography >= 50.0.0."""
     parts = tuple(int(p) for p in cryptography.__version__.split(".")[:3])
-    assert parts >= (49, 0, 0)
+    assert parts >= (50, 0, 0)
+
+
+def test_python_dotenv_patched_version():
+    """CVE-2026-28684 исправлен в python-dotenv >= 1.2.2."""
+    parts = tuple(int(p) for p in package_version("python-dotenv").split(".")[:3])
+    assert parts >= (1, 2, 2)
 
 
 def test_create_and_validate_token():
