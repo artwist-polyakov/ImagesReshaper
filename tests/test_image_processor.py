@@ -12,9 +12,9 @@ from src.utils.image_processor import (
 
 
 def test_aiohttp_patched_version():
-    """CVE-2026-69244 исправлен в aiohttp >= 3.14.3."""
+    """CVE-2026-111064 / CVE-2026-111063 / GHSA-2g87-pp6c-29x5 исправлены в aiohttp >= 3.14.4."""
     parts = tuple(int(p) for p in aiohttp.__version__.split(".")[:3])
-    assert parts >= (3, 14, 3)
+    assert parts >= (3, 14, 4)
 
 
 def test_pillow_patched_version():
