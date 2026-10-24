@@ -18,9 +18,9 @@ def test_aiohttp_patched_version():
 
 
 def test_pillow_patched_version():
-    """Pillow CVE bundle (JPEG2000/PDF/TGA/CMS/…) исправлен в >= 12.3.0."""
+    """Pillow 13.0.0 закрывает CVE-2026-112398 и остальные алерты Dependabot на <= 12.3.0."""
     parts = tuple(int(p) for p in pillow_version.split(".")[:3])
-    assert parts >= (12, 3, 0)
+    assert parts >= (13, 0, 0)
 
 
 def test_get_image_dimensions(make_jpeg_bytes):
