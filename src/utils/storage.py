@@ -26,22 +26,32 @@ class ImageStorage:
         self._prepare_space(needed, user_id)
         try:
             self._write_pending(user_id, payload, width, height)
+            return
         except OSError as exc:
             if exc.errno != errno.ENOSPC:
                 raise
-            print(
-                f"Недостаточно места при записи в {self._user_dir(user_id)}, "
-                "повторяю после очистки"
-            )
-            self._prepare_space(needed, user_id)
+            last_error = exc
+
+        # Запись упала, хотя df мог показывать свободное место (резерв root,
+        # квота, иноды). Свой каталог уже снят, дальше выселяем чужие загрузки
+        # по одной и повторяем запись, пока не освободится место.
+        print(
+            f"Недостаточно места при записи в {self._user_dir(user_id)}, "
+            "повторяю после очистки"
+        )
+        self.cleanup_user_files(user_id)
+        while True:
             try:
                 self._write_pending(user_id, payload, width, height)
-            except OSError as retry_exc:
-                if retry_exc.errno == errno.ENOSPC:
-                    raise StorageFullError(
-                        "Недостаточно места для временного файла"
-                    ) from retry_exc
-                raise
+                return
+            except OSError as exc:
+                if exc.errno != errno.ENOSPC:
+                    raise
+                last_error = exc
+            if not self._evict_oldest_other(user_id):
+                raise StorageFullError(
+                    "Недостаточно места для временного файла"
+                ) from last_error
 
     def _write_pending(self, user_id: int, payload: bytes, width: int, height: int):
         user_dir = self._user_dir(user_id)
@@ -69,9 +79,30 @@ class ImageStorage:
             f"Мало места в {self.temp_dir}: свободно {free}, нужно {needed}. "
             "Удаляю старые загрузки."
         )
+        # Своя предыдущая картинка всё равно заменяется. Снимаем её до чужих.
+        self.cleanup_user_files(user_id)
+        if self._free_bytes() >= needed:
+            return
         self._delete_oldest_until(needed, keep_user_id=user_id)
-        if self._free_bytes() < needed:
-            self.cleanup_user_files(user_id)
+
+    def _evict_oldest_other(self, user_id: int) -> bool:
+        """Удаляет одну самую старую чужую загрузку. False, если удалять нечего."""
+        keep_name = str(user_id)
+        oldest: tuple[float, Path] | None = None
+        for entry in self.temp_dir.iterdir():
+            if entry.name == keep_name:
+                continue
+            try:
+                mtime = entry.stat().st_mtime
+            except OSError:
+                continue
+            if oldest is None or mtime < oldest[0]:
+                oldest = (mtime, entry)
+        if oldest is None:
+            return False
+        entry = oldest[1]
+        self._remove_entry(entry)
+        return not entry.exists()
 
     def _delete_oldest_until(self, needed: int, keep_user_id: int | None):
         keep_name = None if keep_user_id is None else str(keep_user_id)

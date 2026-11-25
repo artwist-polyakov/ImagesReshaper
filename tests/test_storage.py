@@ -76,8 +76,109 @@ def test_save_drops_other_user_when_reported_free_space_is_low(tmp_path, monkeyp
     assert loaded["original_size"] == (2, 3)
 
 
+def test_low_space_reclaims_own_image_before_other_users(tmp_path, monkeypatch):
+    root = tmp_path / "temp"
+    monkeypatch.setenv("TEMP_DIR", str(root))
+    storage = ImageStorage()
+    own = root / "7"
+    own.mkdir()
+    (own / "pending_image.jpg").write_bytes(b"x" * 3_000_000)
+    other = root / "111"
+    other.mkdir()
+    (other / "pending_image.jpg").write_bytes(b"other")
+
+    real_usage = shutil.disk_usage
+    removed = []
+    real_remove = storage._remove_entry
+
+    def usage(path):
+        base = real_usage(path)
+        free = 0 if (root / "7").exists() else base.free
+        return type(base)(base.total, base.total - free, free)
+
+    def remove(entry):
+        removed.append(entry.name)
+        real_remove(entry)
+
+    monkeypatch.setattr("src.utils.storage.shutil.disk_usage", usage)
+    monkeypatch.setattr(storage, "_remove_entry", remove)
+    storage.save_image(7, {"bytes": b"new", "original_size": (2, 3)})
+
+    assert removed == ["7"]
+    assert other.exists()
+    loaded = storage.get_image(7)
+    assert loaded is not None
+    assert loaded["bytes"] == b"new"
+
+
+def test_low_space_evicts_others_only_after_own_image(tmp_path, monkeypatch):
+    root = tmp_path / "temp"
+    monkeypatch.setenv("TEMP_DIR", str(root))
+    storage = ImageStorage()
+    own = root / "7"
+    own.mkdir()
+    (own / "pending_image.jpg").write_bytes(b"own")
+    other = root / "111"
+    other.mkdir()
+    (other / "pending_image.jpg").write_bytes(b"other")
+
+    real_usage = shutil.disk_usage
+    removed = []
+    real_remove = storage._remove_entry
+
+    def usage(path):
+        base = real_usage(path)
+        free = 0 if (root / "111").exists() else base.free
+        return type(base)(base.total, base.total - free, free)
+
+    def remove(entry):
+        removed.append(entry.name)
+        real_remove(entry)
+
+    monkeypatch.setattr("src.utils.storage.shutil.disk_usage", usage)
+    monkeypatch.setattr(storage, "_remove_entry", remove)
+    storage.save_image(7, {"bytes": b"new", "original_size": (2, 3)})
+
+    assert removed == ["7", "111"]
+    assert not other.exists()
+    loaded = storage.get_image(7)
+    assert loaded is not None
+    assert loaded["bytes"] == b"new"
+
+
+def test_enospc_evicts_oldest_other_when_df_still_looks_free(tmp_path, monkeypatch):
+    root = tmp_path / "temp"
+    monkeypatch.setenv("TEMP_DIR", str(root))
+    storage = ImageStorage()
+    oldest = root / "100"
+    newest = root / "200"
+    oldest.mkdir()
+    newest.mkdir()
+    (oldest / "pending_image.jpg").write_bytes(b"old")
+    (newest / "pending_image.jpg").write_bytes(b"new")
+    now = time.time()
+    os.utime(oldest, (now - 30, now - 30))
+    os.utime(newest, (now - 5, now - 5))
+
+    real_write = storage._write_pending
+
+    def write(user_id, payload, width, height):
+        if oldest.exists():
+            raise OSError(errno.ENOSPC, "No space left on device")
+        real_write(user_id, payload, width, height)
+
+    monkeypatch.setattr(storage, "_write_pending", write)
+    storage.save_image(7, {"bytes": b"ok", "original_size": (4, 5)})
+
+    assert not oldest.exists()
+    assert newest.exists()
+    loaded = storage.get_image(7)
+    assert loaded is not None
+    assert loaded["bytes"] == b"ok"
+
+
 def test_save_retries_once_on_enospc_then_raises(tmp_path, monkeypatch):
-    monkeypatch.setenv("TEMP_DIR", str(tmp_path))
+    monkeypatch.setenv("TEMP_DIR", str(tmp_path / "temp"))
     storage = ImageStorage()
     calls = {"n": 0}
 
