@@ -252,7 +252,10 @@ async def handle_load(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cleanup_old_files(context: ContextTypes.DEFAULT_TYPE):
     """Периодически очищает старые файлы"""
-    storage.cleanup_old_files()
+    try:
+        storage.cleanup_old_files()
+    except Exception:
+        logging.exception("Не удалось очистить временные файлы")
 
 def main():
     # Инициализация бота
@@ -268,9 +271,14 @@ def main():
     ))
     application.add_handler(CallbackQueryHandler(handle_resize_callback))
     
-    # Добавляем задачу очистки старых файлов (каждый час), если job_queue доступен
+    try:
+        storage.cleanup_old_files()
+    except Exception:
+        logging.exception("Не удалось очистить временные файлы при старте")
+
+    # Очистка каждый час. Первый запуск скоро после старта, а не через час.
     if application.job_queue:
-        application.job_queue.run_repeating(cleanup_old_files, interval=3600)
+        application.job_queue.run_repeating(cleanup_old_files, interval=3600, first=30)
     else:
         logging.warning("JobQueue не доступен. Автоматическая очистка файлов отключена.")
     

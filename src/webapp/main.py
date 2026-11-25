@@ -1,16 +1,49 @@
+import asyncio
+import contextlib
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, UploadFile, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
-import os
 from telegram.error import BadRequest, NetworkError
 from src.utils.token_manager import TokenManager
 from src.utils.image_processor import process_image_bytes, get_image_dimensions, calculate_resize_options
 from src.utils.telegram_sender import send_resize_options_to_telegram
 import json
-from src.utils.storage import storage
+from src.utils.storage import StorageFullError, storage
 
-app = FastAPI()
+
+async def _cleanup_temp_loop(stop: asyncio.Event):
+    while not stop.is_set():
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=900)
+        except asyncio.TimeoutError:
+            try:
+                storage.cleanup_old_files()
+            except Exception as exc:
+                print(f"Ошибка очистки temp: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    try:
+        storage.cleanup_old_files()
+    except Exception as exc:
+        print(f"Ошибка очистки temp при старте: {exc}")
+    stop = asyncio.Event()
+    task = asyncio.create_task(_cleanup_temp_loop(stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Добавляем CORS middleware
 app.add_middleware(
@@ -81,6 +114,12 @@ async def upload_file(
         
     except HTTPException:
         raise
+    except StorageFullError as exc:
+        print(f"Недостаточно места для загрузки: {exc}")
+        raise HTTPException(
+            status_code=507,
+            detail="На сервере закончилось место для загрузки. Попробуйте ещё раз чуть позже.",
+        )
     except Exception as e:
         print(f"Ошибка при обработке загрузки: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

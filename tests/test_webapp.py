@@ -122,3 +122,26 @@ def test_upload_returns_500_on_bad_request_even_if_networkerror_subclass(client)
 
     assert response.status_code == 500
     assert "telegram_notify_failed" not in response.json()["detail"]
+
+
+def test_upload_returns_507_when_temp_disk_is_full(client):
+    from src.utils.storage import StorageFullError
+
+    test_client, webapp_main = client
+    token = webapp_main.token_manager.create_token(user_id=9)
+
+    with patch.object(
+        webapp_main.storage,
+        "save_image",
+        side_effect=StorageFullError("full"),
+    ):
+        response = test_client.post(
+            "/upload",
+            params={"token": token},
+            files={"file": ("img.jpg", _jpeg_bytes(100, 80), "image/jpeg")},
+        )
+
+    assert response.status_code == 507
+    detail = response.json()["detail"]
+    assert "место" in detail
+    assert "Errno" not in detail
